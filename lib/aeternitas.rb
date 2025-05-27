@@ -1,3 +1,4 @@
+require "ostruct"
 require "active_support/all"
 require "redis"
 require "connection_pool"
@@ -16,11 +17,10 @@ require "aeternitas/metrics"
 
 # Aeternitas
 module Aeternitas
-
   # Get the configured redis connection
   # @return [ConnectionPool::Wrapper] returns a redis connection from the pool
   def self.redis
-    @redis ||= ConnectionPool::Wrapper.new(size: 5, timeout: 3) { Redis.new(self.config.redis) }
+    @redis ||= ConnectionPool::Wrapper.new(size: 5, timeout: 3) { Redis.new(config.redis) }
   end
 
   # Access the configuration
@@ -33,7 +33,7 @@ module Aeternitas
   # @see Aeternitas::Configuration
   # @yieldparam [Aeternitas::Configuration] config the aeternitas configuration
   def self.configure
-    yield(self.config)
+    yield(config)
   end
 
   # Enqueues all active pollables for which next polling is lower than the current time
@@ -55,13 +55,13 @@ module Aeternitas
   # @!attribute [rw] storage_adapter
   #   Storage adapter class. Default: {Aeternitas::StorageAdapter::File}
   class Configuration
-    attr_accessor :redis, :storage_adapter, :storage_adapter_config
+    attr_accessor :storage_adapter, :storage_adapter_config
+    attr_reader :redis
 
     def initialize
-      @redis = nil
       @storage_adapter = Aeternitas::StorageAdapter::File
       @storage_adapter_config = {
-        directory: defined?(Rails) ? File.join(Rails.root, %w[aeternitas_data]) : File.join(Dir.getwd, 'aeternitas_data')
+        directory: defined?(Rails) ? File.join(Rails.root, %w[aeternitas_data]) : File.join(Dir.getwd, "aeternitas_data")
       }
     end
 
@@ -77,4 +77,3 @@ module Aeternitas
     end
   end
 end
-

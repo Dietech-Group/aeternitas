@@ -1,10 +1,10 @@
-require 'aasm'
+require "aasm"
 
 module Aeternitas
   # Stores the meta data of all pollables
   # Every pollable needs to have exactly one meta data object
   class PollableMetaData < ActiveRecord::Base
-    self.table_name = 'aeternitas_pollable_meta_data'
+    self.table_name = "aeternitas_pollable_meta_data"
 
     include AASM
     ######
@@ -25,8 +25,8 @@ module Aeternitas
 
     belongs_to :pollable, polymorphic: true
 
-    validates :pollable_type, presence: true, uniqueness: { scope: :pollable_id }
-    validates :pollable_id, presence: true, uniqueness: { scope: :pollable_type }
+    validates :pollable_type, presence: true, uniqueness: {scope: :pollable_id}
+    validates :pollable_id, presence: true, uniqueness: {scope: :pollable_type}
     validates :pollable_class, presence: true
     validates :next_polling, presence: true
 
@@ -58,16 +58,16 @@ module Aeternitas
       end
     end
 
-    scope(:due, ->() { waiting.where('next_polling < ?', Time.now) })
+    scope(:due, -> { waiting.where("next_polling < ?", Time.now) })
 
     # Disables polling of this instance
     #
     # @param [String] reason Reason for the deactivation. (E.g. an error message)
     def disable_polling(reason = nil)
-      self.deactivate
+      deactivate
       self.deactivation_reason = reason.to_s
       self.deactivated_at = Time.now
-      self.save!
+      save!
     end
   end
 end

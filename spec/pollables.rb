@@ -15,8 +15,9 @@ end
 class FullPollable < ActiveRecord::Base
   include Aeternitas::Pollable
 
-  class DeactivationError < StandardError ; end
-  class IgnoredError < StandardError ; end
+  class DeactivationError < StandardError; end
+
+  class IgnoredError < StandardError; end
 
   attr_accessor :before_polling, :after_polling, :polled
 
@@ -31,14 +32,14 @@ class FullPollable < ActiveRecord::Base
     after_polling ->(pollable) { pollable.after_polling = [:block] }
     after_polling :do_something_after
 
-    queue 'full_pollables'
+    queue "full_pollables"
 
     guard_options(
       key: ->(pollable) { "#{pollable.created_at}-#{pollable.id}" },
       cooldown: 1.second,
-      timeout:  5.minutes
+      timeout: 5.minutes
     )
-    
+
     sleep_on_guard_locked false
   end
 
@@ -54,5 +55,5 @@ class FullPollable < ActiveRecord::Base
     @after_polling << :method
   end
 
-  class ExtendedFullPollable < FullPollable ; end
+  class ExtendedFullPollable < FullPollable; end
 end

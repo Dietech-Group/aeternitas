@@ -21,10 +21,10 @@ module Aeternitas
       #   polling_frequency ->(pollable) {Time.now + 1.month + Time.now - pollable.created_at.to_i / 3.month * 1.month}
       # @todo allow custom methods via reference
       def polling_frequency(frequency)
-        if frequency.is_a?(Symbol)
-          @configuration.polling_frequency = Aeternitas::PollingFrequency.by_name(frequency)
+        @configuration.polling_frequency = if frequency.is_a?(Symbol)
+          Aeternitas::PollingFrequency.by_name(frequency)
         else
-          @configuration.polling_frequency = frequency
+          frequency
         end
       end
 
@@ -38,10 +38,10 @@ module Aeternitas
       # @example method by block
       #   before_polling ->(pollable) {do_something}
       def before_polling(method)
-        if method.is_a?(Symbol)
-          @configuration.before_polling << ->(pollable) { pollable.send(method) }
+        @configuration.before_polling << if method.is_a?(Symbol)
+          ->(pollable) { pollable.send(method) }
         else
-          @configuration.before_polling << method
+          method
         end
       end
 
@@ -55,10 +55,10 @@ module Aeternitas
       # @example method by block
       #   after_polling ->(pollable) {do_something}
       def after_polling(method)
-        if method.is_a?(Symbol)
-          @configuration.after_polling << ->(pollable) { pollable.send(method) }
+        @configuration.after_polling << if method.is_a?(Symbol)
+          ->(pollable) { pollable.send(method) }
         else
-          @configuration.after_polling << method
+          method
         end
       end
 
@@ -94,13 +94,13 @@ module Aeternitas
       #   guard_key ->(pollable) {URI.parse(pollable.url).host}
       def guard_key(key)
         @configuration.guard_options[:key] = case key
-                                when Symbol
-                                  ->(obj) { return obj.send(key) }
-                                when Proc
-                                  key
-                                else
-                                  ->(obj) { return key.to_s }
-                                end
+        when Symbol
+          ->(obj) { obj.send(key) }
+        when Proc
+          key
+        else
+          ->(obj) { key.to_s }
+        end
       end
 
       # Configure the guard.
@@ -121,4 +121,3 @@ module Aeternitas
     end
   end
 end
-

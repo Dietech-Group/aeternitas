@@ -1,5 +1,5 @@
-require 'active_support/duration'
-require 'securerandom'
+require "active_support/duration"
+require "securerandom"
 
 module Aeternitas
   # A distributed lock that can not be acquired after being unlocked for a certain time (cooldown period).
@@ -25,7 +25,6 @@ module Aeternitas
   # @!attribute [r] token
   #   @return [String] cryptographic token which ensures we do not lock/unlock a guard held by another process
   class Guard
-
     attr_reader :id, :timeout, :cooldown, :token
 
     # Create a new Guard
@@ -35,10 +34,10 @@ module Aeternitas
     # @param [ActiveRecord::Duration] timeout Lock timeout
     # @return [Aeternitas::Guard] Creates a new Instance
     def initialize(id, cooldown, timeout = 10.minutes)
-      @id       = id
+      @id = id
       @cooldown = cooldown
-      @timeout  = timeout
-      @token    = SecureRandom.hex(10)
+      @timeout = timeout
+      @token = SecureRandom.hex(10)
     end
 
     # Runs a given block if the lock can be acquired and releases the lock afterwards.
@@ -68,7 +67,7 @@ module Aeternitas
     # @param [ActiveSupport::Duration] duration sleeping duration
     # @param [String] msg hint why the guard sleeps
     def sleep_for(duration, msg = nil)
-      raise ArgumentError, 'duration must be an ActiveRecord::Duration' unless duration.is_a?(ActiveSupport::Duration)
+      raise ArgumentError, "duration must be an ActiveRecord::Duration" unless duration.is_a?(ActiveSupport::Duration)
       sleep_until(duration.from_now, msg)
     end
 
@@ -88,12 +87,12 @@ module Aeternitas
     # @raise [Aeternitas::Guard::GuardIsLocked] if the lock can not be acquired
     def acquire_lock!
       payload = {
-        'id' => @id,
-        'state' => 'processing',
-        'timeout' => @timeout,
-        'cooldown' => @cooldown,
-        'locked_until' => @timeout.from_now,
-        'token' => @token
+        "id" => @id,
+        "state" => "processing",
+        "timeout" => @timeout,
+        "cooldown" => @cooldown,
+        "locked_until" => @timeout.from_now,
+        "token" => @token
       }
 
       has_lock = Aeternitas.redis.set(@id, JSON.unparse(payload), ex: @timeout.to_i, nx: true)
@@ -116,12 +115,12 @@ module Aeternitas
       return false unless holds_lock?
 
       payload = {
-          'id' => @id,
-          'state' => 'cooldown',
-          'timeout' => @timeout,
-          'cooldown' => @cooldown,
-          'locked_until' => @cooldown.from_now,
-          'token' => @token
+        "id" => @id,
+        "state" => "cooldown",
+        "timeout" => @timeout,
+        "cooldown" => @cooldown,
+        "locked_until" => @cooldown.from_now,
+        "token" => @token
       }
 
       Aeternitas.redis.set(@id, JSON.unparse(payload), ex: @cooldown.to_i)
@@ -144,11 +143,11 @@ module Aeternitas
     # @param [String] msg hint why the guard sleeps
     def sleep(sleep_timeout, msg = nil)
       payload = {
-          'id' => @id,
-          'state' => 'sleeping',
-          'timeout' => @timeout,
-          'cooldown' => @cooldown,
-          'locked_until' => sleep_timeout
+        "id" => @id,
+        "state" => "sleeping",
+        "timeout" => @timeout,
+        "cooldown" => @cooldown,
+        "locked_until" => sleep_timeout
       }
       payload.merge(message: msg) if msg
 
@@ -162,7 +161,7 @@ module Aeternitas
     # @return [Boolean] if the lock is held by this instance
     def holds_lock?
       payload = get_payload
-      payload['token'] == @token && payload['state'] == 'processing'
+      payload["token"] == @token && payload["state"] == "processing"
     end
 
     # Returns the guards current timeout.
@@ -170,7 +169,7 @@ module Aeternitas
     # @return [Time] the guards current timeout
     def get_timeout
       payload = get_payload
-      payload['state'] == 'processing' ? payload['cooldown'].to_i.seconds.from_now : Time.parse(payload['locked_until'])
+      (payload["state"] == "processing") ? payload["cooldown"].to_i.seconds.from_now : Time.parse(payload["locked_until"])
     end
 
     # Retrieves the locks payload from redis.

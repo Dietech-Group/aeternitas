@@ -22,13 +22,13 @@ module Aeternitas
     #   lock is released if the lock could not be acquired. (Default: true)
     class Configuration
       attr_accessor :deactivation_errors,
-                    :before_polling,
-                    :queue,
-                    :polling_frequency,
-                    :after_polling,
-                    :guard_options,
-                    :ignored_errors,
-                    :sleep_on_guard_locked
+        :before_polling,
+        :queue,
+        :polling_frequency,
+        :after_polling,
+        :guard_options,
+        :ignored_errors,
+        :sleep_on_guard_locked
 
       # Creates a new Configuration with default options
       def initialize
@@ -36,29 +36,28 @@ module Aeternitas
         @before_polling = []
         @after_polling = []
         @guard_options = {
-          key: ->(obj) { return obj.class.name.to_s },
+          key: ->(obj) { obj.class.name.to_s },
           timeout: 10.minutes,
           cooldown: 5.seconds
         }
         @deactivation_errors = []
         @ignored_errors = []
-        @queue = 'polling'
+        @queue = "polling"
         @sleep_on_guard_locked = true
       end
 
       def copy
         config = Configuration.new
-        config.polling_frequency = self.polling_frequency
-        config.before_polling = self.before_polling.deep_dup
-        config.after_polling = self.after_polling.deep_dup
-        config.guard_options = self.guard_options.deep_dup
-        config.deactivation_errors = self.deactivation_errors.deep_dup
-        config.ignored_errors = self.ignored_errors.deep_dup
-        config.queue = self.queue
-        config.sleep_on_guard_locked = self.sleep_on_guard_locked
+        config.polling_frequency = polling_frequency
+        config.before_polling = before_polling.deep_dup
+        config.after_polling = after_polling.deep_dup
+        config.guard_options = guard_options.deep_dup
+        config.deactivation_errors = deactivation_errors.deep_dup
+        config.ignored_errors = ignored_errors.deep_dup
+        config.queue = queue
+        config.sleep_on_guard_locked = sleep_on_guard_locked
         config
       end
     end
   end
 end
-

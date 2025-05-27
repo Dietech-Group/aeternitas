@@ -1,5 +1,5 @@
-require 'aeternitas/pollable/configuration'
-require 'aeternitas/pollable/dsl'
+require "aeternitas/pollable/configuration"
+require "aeternitas/pollable/dsl"
 
 module Aeternitas
   # Mixin that enables the frequent polling of the receiving class.
@@ -25,20 +25,20 @@ module Aeternitas
     extend ActiveSupport::Concern
 
     included do
-      raise StandardError, 'Aeternitas::Pollable must inherit from ActiveRecord::Base' unless self.ancestors.include?(ActiveRecord::Base)
+      raise StandardError, "Aeternitas::Pollable must inherit from ActiveRecord::Base" unless ancestors.include?(ActiveRecord::Base)
 
       has_one :pollable_meta_data, as: :pollable,
-              dependent: :destroy,
-              class_name: 'Aeternitas::PollableMetaData'
+        dependent: :destroy,
+        class_name: "Aeternitas::PollableMetaData"
 
       has_many :sources, as: :pollable,
-               dependent: :destroy,
-               class_name: 'Aeternitas::Source'
+        dependent: :destroy,
+        class_name: "Aeternitas::Source"
 
       validates :pollable_meta_data, presence: true
 
       before_validation ->(pollable) do
-        pollable.pollable_meta_data ||= pollable.build_pollable_meta_data(state: 'waiting')
+        pollable.pollable_meta_data ||= pollable.build_pollable_meta_data(state: "waiting")
         pollable.pollable_meta_data.pollable_class = pollable.class.name
       end
 
@@ -53,7 +53,7 @@ module Aeternitas
 
       begin
         guard.with_lock { poll }
-      rescue StandardError => e
+      rescue => e
         if pollable_configuration.deactivation_errors.include?(e.class)
           disable_polling(e)
           return false
@@ -67,15 +67,13 @@ module Aeternitas
       end
 
       _after_poll
-    rescue StandardError => e
+    rescue => e
       begin
         log_poll_error(e)
       ensure
         raise e
       end
     end
-
-
 
     # This method implements the class specific polling behaviour.
     # It is only called after the lock was acquired successfully.
@@ -91,8 +89,8 @@ module Aeternitas
     #   {Aeternitas::Pollable} was included. Otherwise it is done automatically after creation.
     def register_pollable
       self.pollable_meta_data ||= create_pollable_meta_data(
-          state: 'waiting',
-          pollable_class: self.class.name
+        state: "waiting",
+        pollable_class: self.class.name
       )
     end
 
@@ -121,7 +119,7 @@ module Aeternitas
     # @param [String] raw_content the sources raw content
     # @return [Aeternitas::Source] the newly created or existing source
     def add_source(raw_content)
-      source = self.sources.create(raw_content: raw_content)
+      source = sources.create(raw_content: raw_content)
       return nil unless source.persisted?
 
       Aeternitas::Metrics.log(:sources_created, self.class)
@@ -185,7 +183,7 @@ module Aeternitas
       # Configure the polling process.
       # For available configuration options see {Aeternitas::Pollable::Configuration} and {Aeternitas::Pollable::DSL}
       def polling_options(&block)
-        Aeternitas::Pollable::Dsl.new(self.pollable_configuration, &block)
+        Aeternitas::Pollable::Dsl.new(pollable_configuration, &block)
       end
 
       def inherited(other)
