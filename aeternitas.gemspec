@@ -6,17 +6,12 @@ require 'aeternitas/version'
 Gem::Specification.new do |spec|
   spec.name          = 'aeternitas'
   spec.version       = Aeternitas::VERSION
-  spec.authors       = ['Michael Prilop', 'Max Kießling', 'Robert Terbach']
-  spec.email         = ['max@kopfueber.org', 'michael.prilop@imw.fraunhofer.de']
+  spec.authors       = ['Michael Prilop', 'Max Kießling']
+  spec.email         = ['prilop@infai.org']
 
-  spec.summary       = "æternitas - A ruby gem for continuous source retrieval and data integration"
-  spec.description   = <<-EOF
-    Æternitas provides means to regularly 'poll' resources (i.e. a website, twitter feed or API) and to permanently
-    store retrieved results. By default æternitas avoids putting too much load on external servers and stores raw
-    results as compressed files on disk. It can be configured to a wide variety of polling strategies (e.g. frequencies,
-    cooldown periods, ignoring exceptions, deactivating resources, ...)."
-  EOF
-  spec.homepage      = "https://github.com/FHG-IMW/aeternitas"
+  spec.summary       = "æternitas - version 2"
+  spec.description   = "æternitas is a tool support polling resources (webpages, APIs)."
+  spec.homepage      = "https://github.com/Dietech-Group/aeternitas"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0").reject do |f|
