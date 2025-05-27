@@ -1,7 +1,7 @@
-require 'aeternitas/metrics/ten_minutes_resolution'
-require 'aeternitas/metrics/counter'
-require 'aeternitas/metrics/values'
-require 'aeternitas/metrics/ratio'
+require "aeternitas/metrics/ten_minutes_resolution"
+require "aeternitas/metrics/counter"
+require "aeternitas/metrics/values"
+require "aeternitas/metrics/ratio"
 
 module Aeternitas
   # Provides extensive metrics for Aeternitas.
@@ -59,23 +59,23 @@ module Aeternitas
     end
 
     AVAILABLE_METRICS.each_pair do |metric, _|
-      module_eval <<-eoruby, __FILE__, __LINE__ + 1
+      module_eval <<-EORUBY, __FILE__, __LINE__ + 1
         def self.#{metric}(pollable, from: 1.hour.ago, to: Time.now, resolution: :minute)
           self.get(:#{metric}, pollable, from: from, to: to, resolution: resolution )
         end
-      eoruby
+      EORUBY
     end
 
     # Increses the specified counter metric for the given pollable.
     # @param [Symbol, String] name the metric
     # @param [Pollable] pollable_class pollable instance
     def self.log(name, pollable_class)
-      raise('Metric not found') unless AVAILABLE_METRICS.key? name
+      raise("Metric not found") unless AVAILABLE_METRICS.key? name
       raise ArgumentError, "#{name} isn't a Counter" unless AVAILABLE_METRICS[name] == :counter
       begin
         TabsTabs.increment_counter(get_key(name, pollable_class))
         TabsTabs.increment_counter(get_key(name, Aeternitas::Pollable))
-      rescue StandardError ; end
+      rescue; end
     end
 
     # Logs a value in a value metric for the given pollable.
@@ -83,12 +83,12 @@ module Aeternitas
     # @param [Pollable] pollable_class pollable instance
     # @param [Object] value the value
     def self.log_value(name, pollable_class, value)
-      raise('Metric not found') unless AVAILABLE_METRICS.key? name
+      raise("Metric not found") unless AVAILABLE_METRICS.key? name
       raise(ArgumentError, "#{name} isn't a Value") unless AVAILABLE_METRICS[name] == :value
       begin
         TabsTabs.record_value(get_key(name, pollable_class), value)
         TabsTabs.record_value(get_key(name, Aeternitas::Pollable), value)
-      rescue StandardError ; end
+      rescue; end
     end
 
     # Retrieves the stats of the given metric in the given time frame and resolution.
@@ -99,8 +99,8 @@ module Aeternitas
     # @param [Symbol] resolution resolution
     # @return [Aeternitas::Metrics::Counter, Aeternitas::Metrics::Value] stats
     def self.get(name, pollable_class, from: 1.hour.ago, to: Time.now, resolution: :minute)
-      raise('Metric not found') unless AVAILABLE_METRICS.key? name
-      raise('Invalid interval') if from > to
+      raise("Metric not found") unless AVAILABLE_METRICS.key? name
+      raise("Invalid interval") if from > to
       result = TabsTabs.get_stats(get_key(name, pollable_class), from..to, resolution)
       if AVAILABLE_METRICS[name] == :counter
         Counter.new(result)
@@ -153,8 +153,8 @@ module Aeternitas
     def self.calculate_ratio(base, target)
       base.zip(target).map do |b, t|
         {
-          timestamp: b['timestamp'],
-          ratio: b['count'].to_i.zero? ? 0 : t['count'].to_i / b['count'].to_f
+          timestamp: b["timestamp"],
+          ratio: b["count"].to_i.zero? ? 0 : t["count"].to_i / b["count"].to_f
         }.with_indifferent_access
       end
     end

@@ -2,7 +2,6 @@ module Aeternitas
   class StorageAdapter
     # A storage adapter that stores the entries on disk.
     class File < Aeternitas::StorageAdapter
-
       # Create a new File storage adapter.
       # @param [Hash] config the adapters config
       # @option config [String] :directory specifies where the entries are stored
@@ -14,22 +13,20 @@ module Aeternitas
         path = file_path(id)
         ensure_folders_exist(path)
         raise(Aeternitas::Errors::SourceDataExists, id) if ::File.exist?(path)
-        ::File.open(path, 'w+', encoding: 'ascii-8bit') do |f|
+        ::File.open(path, "w+", encoding: "ascii-8bit") do |f|
           f.write(Zlib.deflate(raw_content, Zlib::BEST_COMPRESSION))
         end
       end
 
       def retrieve(id)
         raise(Aeternitas::Errors::SourceDataNotFound, id) unless exist?(id)
-        Zlib.inflate(::File.read(file_path(id), encoding: 'ascii-8bit'))
+        Zlib.inflate(::File.read(file_path(id), encoding: "ascii-8bit"))
       end
 
       def delete(id)
-        begin
-          !!::File.delete(file_path(id))
-        rescue Errno::ENOENT => e
-          return false
-        end
+        !!::File.delete(file_path(id))
+      rescue Errno::ENOENT
+        false
       end
 
       def exist?(id)
@@ -57,9 +54,9 @@ module Aeternitas
       # @return [String] the entries location
       def file_path(id)
         ::File.join(
-            @config[:directory],
-            id[0..1], id[2..3], id[4..5],
-            id[6..-1]
+          @config[:directory],
+          id[0..1], id[2..3], id[4..5],
+          id[6..]
         )
       end
 

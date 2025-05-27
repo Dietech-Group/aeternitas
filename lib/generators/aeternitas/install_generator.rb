@@ -8,20 +8,20 @@ module Aeternitas
 
     source_root File.expand_path("../templates", __FILE__)
 
-    desc 'Generates (but does not run) a migration to add all tables needed by Aeternitas.' \
-         '  Also generates an initializer file for configuring Aeternitas'
+    desc "Generates (but does not run) a migration to add all tables needed by Aeternitas." \
+         "  Also generates an initializer file for configuring Aeternitas"
 
     def create_migration_file
       migration_dir = File.expand_path("db/migrate")
-      if self.class.migration_exists?(migration_dir, 'add_aeternitas')
+      if self.class.migration_exists?(migration_dir, "add_aeternitas")
         ::Kernel.warn "Migration already exists: #{template}"
       else
-        migration_template('add_aeternitas.rb.erb', 'db/migrate/add_aeternitas.rb')
+        migration_template("add_aeternitas.rb.erb", "db/migrate/add_aeternitas.rb")
       end
     end
 
     def copy_initializer
-      copy_file('initializer.rb', 'config/initializers/aeternitas.rb')
+      copy_file("initializer.rb", "config/initializers/aeternitas.rb")
     end
 
     def reminder

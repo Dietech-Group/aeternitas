@@ -42,13 +42,13 @@ module Aeternitas
       # Computes the minimum ration within the time series.
       # @return [Float] the minimum ratio
       def min
-        @values.min_by { |v| v['ratio'] }['ratio']
+        @values.min_by { |v| v["ratio"] }["ratio"]
       end
 
       # Computes the maximum ration within the time series.
       # @return [Float] the maximum ratio
       def max
-        @values.max_by { |v| v['ratio'] }['ratio']
+        @values.max_by { |v| v["ratio"] }["ratio"]
       end
 
       # Computes the average ration within the time series.

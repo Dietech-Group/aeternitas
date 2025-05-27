@@ -2,7 +2,6 @@ module Aeternitas
   module Sidekiq
     # Aeternitas Sidekiq Middleware
     class Middleware
-
       def call(worker, msg, queue)
         yield
       rescue Aeternitas::Guard::GuardIsLocked => e
@@ -17,7 +16,7 @@ module Aeternitas
         worker.class.client_push msg
 
         # update the pollables state
-        meta_data = Aeternitas::PollableMetaData.find_by(id: msg['args'].first)
+        meta_data = Aeternitas::PollableMetaData.find_by(id: msg["args"].first)
         meta_data.enqueue!
 
         if meta_data.pollable.pollable_configuration.sleep_on_guard_locked

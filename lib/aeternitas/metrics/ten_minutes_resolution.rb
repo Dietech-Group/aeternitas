@@ -5,7 +5,7 @@ module Aeternitas
       include TabsTabs::Resolutionable
       extend self
 
-      PATTERN = '%Y-%m-%d-%H-%M'.freeze
+      PATTERN = "%Y-%m-%d-%H-%M".freeze
 
       def name
         :ten_minutes

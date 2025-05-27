@@ -14,7 +14,6 @@ module Aeternitas
         @original_error = original_error
         super("#{original_error.class} - #{original_error.message}")
       end
-
     end
 
     # Raised when a source data already exists.

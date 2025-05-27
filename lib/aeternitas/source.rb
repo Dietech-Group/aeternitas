@@ -13,7 +13,7 @@ module Aeternitas
     # end
     # add_index :aeternitas_sources, [:pollable_id, :pollable_type], name: 'aeternitas_pollable_source'
     ######
-    self.table_name = 'aeternitas_sources'
+    self.table_name = "aeternitas_sources"
 
     attr_writer :raw_content
 
@@ -42,17 +42,17 @@ module Aeternitas
     # Get the sources raw content.
     # @return [String] the sources raw content
     def raw_content
-      @raw_content ||= Aeternitas.config.get_storage_adapter.retrieve(self.fingerprint)
+      @raw_content ||= Aeternitas.config.get_storage_adapter.retrieve(fingerprint)
     end
 
     private
 
     def create_file
-      Aeternitas.config.get_storage_adapter.store(self.fingerprint, raw_content)
+      Aeternitas.config.get_storage_adapter.store(fingerprint, raw_content)
     end
 
     def delete_file
-      Aeternitas.config.get_storage_adapter.delete(self.fingerprint)
+      Aeternitas.config.get_storage_adapter.delete(fingerprint)
     end
 
     def ensure_fingerprint

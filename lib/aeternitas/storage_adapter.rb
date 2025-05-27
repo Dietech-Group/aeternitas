@@ -3,7 +3,6 @@ module Aeternitas
   # Storage Adapters take care of handling source files.
   # @abstract Create a subclass and override {#store}, #{retrieve} and #{#delete} to create a new storage adapter
   class StorageAdapter
-
     # Create a new storage adapter
     # @param [Hash] config the adapters configuration
     def initialize(config)
@@ -41,6 +40,5 @@ module Aeternitas
     def exist?(id)
       raise NotImplementedError, "#{self.class.name} does not implement #exist?, required by Aeternitas::StorageAdapter"
     end
-
   end
 end
