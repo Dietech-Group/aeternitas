@@ -7,8 +7,3 @@
 /pkg/
 /spec/reports/
 /tmp/
-
-.idea/
-
-## File-based project format:
-*.iws
