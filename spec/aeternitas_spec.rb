@@ -12,7 +12,7 @@ describe Aeternitas do
       meta_data.update!(state: "waiting", next_polling: 10.days.ago)
       Aeternitas.enqueue_due_pollables
       expect(Aeternitas::Sidekiq::PollJob).to(
-        have_enqueued_job(due_pollable.pollable_meta_data.id)
+        have_enqueued_sidekiq_job(due_pollable.pollable_meta_data.id)
       )
     end
 
@@ -29,7 +29,7 @@ describe Aeternitas do
       meta_data = enqueued_pollable.pollable_meta_data
       meta_data.update!(state: "enqueued", next_polling: 10.days.ago)
       Aeternitas.enqueue_due_pollables
-      expect(Aeternitas::Sidekiq::PollJob).not_to have_enqueued_job(enqueued_pollable.pollable_meta_data.id)
+      expect(Aeternitas::Sidekiq::PollJob).not_to have_enqueued_sidekiq_job(enqueued_pollable.pollable_meta_data.id)
     end
 
     it "does not enqueue undue pollables" do
@@ -37,7 +37,7 @@ describe Aeternitas do
       meta_data = undue_pollable.pollable_meta_data
       meta_data.update!(state: "waiting", next_polling: 10.days.from_now)
       Aeternitas.enqueue_due_pollables
-      expect(Aeternitas::Sidekiq::PollJob).not_to have_enqueued_job(undue_pollable.pollable_meta_data.id)
+      expect(Aeternitas::Sidekiq::PollJob).not_to have_enqueued_sidekiq_job(undue_pollable.pollable_meta_data.id)
     end
   end
 end

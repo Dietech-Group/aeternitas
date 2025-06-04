@@ -17,7 +17,7 @@ Aeternitas.configure do |conf|
 end
 
 DatabaseCleaner[:active_record].strategy = :transaction
-DatabaseCleaner[:redis].strategy = :truncation
+DatabaseCleaner[:redis].strategy = :deletion
 
 Sidekiq::Testing.server_middleware do |chain|
   chain.add Aeternitas::Sidekiq::Middleware
@@ -32,7 +32,7 @@ end
 RSpec.configure do |config|
   config.before(:suite) do
     DatabaseCleaner[:active_record].strategy = :transaction
-    DatabaseCleaner[:redis].strategy = :truncation
+    DatabaseCleaner[:redis].strategy = :deletion
   end
 
   config.around(:each) do |example|
