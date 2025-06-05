@@ -25,8 +25,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "redis"
   spec.add_dependency "connection_pool"
   spec.add_dependency "aasm"
-  spec.add_dependency "sidekiq", "> 4", "<= 5.2.7"
-  spec.add_dependency "sidekiq-unique-jobs", "~> 5.0"
   spec.add_dependency "tabstabs"
 
   spec.add_development_dependency "bundler"
@@ -34,7 +32,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec", "~> 3.0"
   spec.add_development_dependency "sqlite3", "~> 1.4"
   spec.add_development_dependency "database_cleaner", "~> 1.5"
-  spec.add_development_dependency "rspec-sidekiq", "~> 3.1"
-  spec.add_development_dependency "mock_redis"
   spec.add_development_dependency "standard"
 end
