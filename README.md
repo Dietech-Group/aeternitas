@@ -21,3 +21,6 @@ Bug reports and spec backed pull requests are welcome on GitHub at https://githu
 
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
 
+## History
+
+This gem was originally developed under [FHG-IMW/aeternitas](https://github.com/FHG-IMW/aeternitas) and named "æternitas - A ruby gem for continuous source retrieval and data integration". It's core was based upon Sidekiq and Redis which both were removed as dependencies for this gem.
