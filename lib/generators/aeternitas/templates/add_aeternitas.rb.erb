@@ -1,11 +1,11 @@
 # This migration creates the tables needed by Aeternitas
-class AddAeternitas < ActiveRecord::Migration
+class AddAeternitas < ActiveRecord::Migration[<%= ActiveRecord::Migration.current_version %>]
   def change
     create_table :aeternitas_pollable_meta_data do |t|
       t.string :pollable_type, null: false
       t.integer :pollable_id, null: false
       t.string :pollable_class, null: false
-      t.datetime :next_polling, null: false, default: "1970-01-01 00:00:00+002"
+      t.datetime :next_polling, null: false, default: "1970-01-01 00:00:00"
       t.datetime :last_polling
       t.string :state
       t.text :deactivation_reason
@@ -21,5 +21,15 @@ class AddAeternitas < ActiveRecord::Migration
       t.datetime :created_at
     end
     add_index :aeternitas_sources, [:pollable_id, :pollable_type], name: 'aeternitas_pollable_source'
+
+    create_table :aeternitas_unique_job_locks do |t|
+      t.string :lock_digest, null: false
+      t.string :job_id
+      t.datetime :expires_at, null: false
+
+      t.timestamps
+    end
+    add_index :aeternitas_unique_job_locks, :lock_digest, unique: true
+    add_index :aeternitas_unique_job_locks, :expires_at
   end
 end

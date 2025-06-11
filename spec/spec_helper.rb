@@ -1,8 +1,10 @@
 $LOAD_PATH.unshift File.expand_path("../../lib", __FILE__)
 require "active_record"
 require "active_job"
+require "active_support/testing/time_helpers"
 require "aeternitas"
 require "database_cleaner"
+require "database_cleaner/redis"
 
 # Configure ActiveJob test adapter
 ActiveJob::Base.queue_adapter = :test
@@ -23,11 +25,15 @@ DatabaseCleaner[:active_record].strategy = :transaction
 DatabaseCleaner[:redis].strategy = :deletion
 
 RSpec.configure do |config|
+  config.order = :random # Tests should not depend on each other
+
   config.include ActiveJob::TestHelper
+  config.include ActiveSupport::Testing::TimeHelpers
 
   config.before(:suite) do
-    DatabaseCleaner[:active_record].strategy = :transaction
-    DatabaseCleaner[:redis].strategy = :deletion
+    # Clean once before suite using schema.rb definitions with force: true
+    DatabaseCleaner[:active_record].clean_with :truncation
+    DatabaseCleaner[:redis].clean_with :deletion
   end
 
   config.around(:each) do |example|
@@ -42,8 +48,9 @@ RSpec.configure do |config|
     FileUtils.rm_rf(Aeternitas.config.storage_adapter_config[:directory])
   end
 
-  # Clear enqueued jobs before each test example
+  # Clear jobs before each test example
   config.before(:each) do
     clear_enqueued_jobs
+    clear_performed_jobs
   end
 end

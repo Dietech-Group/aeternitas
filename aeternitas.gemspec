@@ -29,8 +29,9 @@ Gem::Specification.new do |spec|
 
   spec.add_development_dependency "bundler"
   spec.add_development_dependency "rake"
-  spec.add_development_dependency "rspec", "~> 3.0"
-  spec.add_development_dependency "sqlite3", "~> 1.4"
-  spec.add_development_dependency "database_cleaner", "~> 1.5"
+  spec.add_development_dependency "rspec-rails", "~> 7.0"
+  spec.add_development_dependency "sqlite3", "~> 1.7"
+  spec.add_development_dependency "database_cleaner", "~> 2.0"
+  spec.add_development_dependency "database_cleaner-redis", "~> 2.0"
   spec.add_development_dependency "standard"
 end
