@@ -105,4 +105,63 @@ RSpec.describe Aeternitas::PollJob do
       end
     end
   end
+
+  describe "GuardIsLocked Handling" do
+    let(:guard_locked_error) { Aeternitas::Guard::GuardIsLocked.new("guard-key", 30.minutes.from_now) }
+
+    before do
+      allow_any_instance_of(Aeternitas::Guard).to receive(:with_lock).and_raise(guard_locked_error)
+    end
+
+    context "when sleep_on_guard_locked is true" do
+      let(:pollable_with_sleep) { SimplePollable.create!(name: "Sleeper") }
+      let(:meta_data_with_sleep) { pollable_with_sleep.pollable_meta_data }
+
+      before do
+        pollable_with_sleep.pollable_configuration.sleep_on_guard_locked = true
+      end
+
+      it "blocks with sleep, sets state to enqueued, and retries the job" do
+        travel_to Time.current do
+          job_instance = described_class.new(meta_data_with_sleep.id)
+
+          # Mock sleep on the job instance
+          expect(job_instance).to receive(:sleep).and_return(nil)
+          expect { job_instance.perform_now }.not_to raise_error
+
+          expect(enqueued_jobs.size).to eq(1)
+          enqueued_job = enqueued_jobs.last
+          expect(Time.at(enqueued_job[:at])).to be_within(1.second).of(Time.current + 2.seconds)
+          expect(meta_data_with_sleep.reload.enqueued?).to be true
+        end
+      end
+    end
+
+    context "when sleep_on_guard_locked is false (default)" do
+      let(:full_pollable) { FullPollable.create!(name: "Full") }
+      let(:full_meta_data) { full_pollable.pollable_meta_data }
+
+      it "retries the job with a staggered delay" do
+        travel_to Time.current do
+          described_class.perform_later(full_meta_data.id)
+          full_meta_data.enqueue!
+
+          perform_enqueued_jobs
+
+          expect(full_meta_data.reload.enqueued?).to be true
+          expect(enqueued_jobs.size).to eq(1)
+
+          enqueued_job = enqueued_jobs.last
+          base_delay = (guard_locked_error.timeout - Time.now).to_f
+
+          stagger_delay = 1 * full_pollable.guard.cooldown.to_f
+          expected_wait = base_delay + stagger_delay
+
+          # 2 second jitter
+          expect(Time.at(enqueued_job[:at])).to be_within(2.second).of(Time.current + expected_wait.seconds)
+          expect(Aeternitas::UniqueJobLock.count).to eq(1)
+        end
+      end
+    end
+  end
 end

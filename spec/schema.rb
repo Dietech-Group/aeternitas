@@ -37,11 +37,13 @@ ActiveRecord::Schema.define do
 
   create_table :aeternitas_unique_job_locks, force: true do |t|
     t.string :lock_digest, null: false
+    t.string :guard_key_digest
     t.string :job_id
     t.datetime :expires_at, null: false
 
     t.timestamps
   end
   add_index :aeternitas_unique_job_locks, :lock_digest, unique: true
+  add_index :aeternitas_unique_job_locks, :guard_key_digest
   add_index :aeternitas_unique_job_locks, :expires_at
 end

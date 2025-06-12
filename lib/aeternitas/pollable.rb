@@ -53,6 +53,9 @@ module Aeternitas
 
       begin
         guard.with_lock { poll }
+      rescue Aeternitas::Guard::GuardIsLocked
+        # Do not transition to the 'errored' state for a guard lock.
+        raise
       rescue => e
         if pollable_configuration.deactivation_errors.include?(e.class)
           disable_polling(e)

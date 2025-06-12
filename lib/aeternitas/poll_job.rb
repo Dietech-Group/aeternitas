@@ -15,18 +15,23 @@ module Aeternitas
       # Only check for uniqueness on the first attempt. Retries should not be blocked by their own lock.
       if job.executions.zero?
         pollable_meta_data_id = job.arguments.first
-        digest = self.class.generate_lock_digest(pollable_meta_data_id)
+        pollable_meta_data = Aeternitas::PollableMetaData.find(pollable_meta_data_id)
+        pollable = pollable_meta_data.pollable
 
-        Aeternitas::UniqueJobLock.where("lock_digest = ? AND expires_at <= ?", digest, Time.now).destroy_all
+        lock_digest = self.class.generate_lock_digest(pollable_meta_data_id)
+        guard_key_digest = self.class.generate_guard_key_digest(pollable)
+
+        Aeternitas::UniqueJobLock.where("lock_digest = ? AND expires_at <= ?", lock_digest, Time.now).destroy_all
 
         new_lock = Aeternitas::UniqueJobLock.new(
-          lock_digest: digest,
+          lock_digest: lock_digest,
+          guard_key_digest: guard_key_digest,
           expires_at: Time.now + LOCK_EXPIRATION,
           job_id: job.job_id
         )
 
         unless new_lock.save
-          ActiveJob::Base.logger.warn "[Aeternitas::PollJob] Aborting enqueue for #{pollable_meta_data_id} (job #{job.job_id}) due to existing lock: #{digest}"
+          ActiveJob::Base.logger.warn "[Aeternitas::PollJob] Aborting enqueue for #{pollable_meta_data_id} (job #{job.job_id}) due to existing lock: #{lock_digest}"
           throw(:abort)
         end
       end
@@ -38,6 +43,40 @@ module Aeternitas
       wait: ->(executions) { execution_wait_time(executions) },
       jitter: ->(executions) { [execution_wait_time(executions) * 0.1, 10.minutes].min } do |job, error|
       handle_retries_exhausted(error)
+    end
+
+    # === GuardIsLocked Handling ===
+    rescue_from Aeternitas::Guard::GuardIsLocked do |error|
+      meta_data = Aeternitas::PollableMetaData.find_by(id: arguments.first)
+      return unless meta_data
+
+      pollable = meta_data.pollable
+      pollable_config = pollable.pollable_configuration
+      base_delay = (error.timeout - Time.now).to_f
+      meta_data.enqueue!
+
+      if pollable_config.sleep_on_guard_locked
+        if base_delay > 0
+          ActiveJob::Base.logger.warn "[Aeternitas::PollJob] Guard locked for #{arguments.first}. Sleep for #{base_delay.round(2)}s."
+          sleep(base_delay)
+        end
+        retry_job(wait: 2.seconds)
+      else
+        guard_key_digest = self.class.generate_guard_key_digest(pollable)
+        identical_guard_key_count = Aeternitas::UniqueJobLock.where(guard_key_digest: guard_key_digest).count
+
+        stagger_delay = identical_guard_key_count * pollable.guard.cooldown.to_f
+        jitter = rand(0.0..2.0)
+        total_wait = base_delay + stagger_delay + jitter
+
+        if total_wait > 0
+          retry_job(wait: total_wait.seconds)
+          ActiveJob::Base.logger.info "[Aeternitas::PollJob] Guard locked for #{arguments.first}. Retry in #{total_wait.round(2)}s."
+        else
+          # GuardLock expired, retry with minimal delay
+          retry_job(wait: jitter.seconds)
+        end
+      end
     end
 
     def self.execution_wait_time(executions)
@@ -59,6 +98,11 @@ module Aeternitas
 
     def self.generate_lock_digest(pollable_meta_data_id)
       Digest::SHA256.hexdigest("#{name}:#{pollable_meta_data_id}")
+    end
+
+    def self.generate_guard_key_digest(pollable)
+      guard_key = pollable.pollable_configuration.guard_options[:key].call(pollable)
+      Digest::SHA256.hexdigest("guard-key:#{guard_key}")
     end
 
     def handle_retries_exhausted(error)
