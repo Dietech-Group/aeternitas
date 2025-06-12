@@ -20,20 +20,18 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "activerecord", ">= 6.1"
+  spec.add_dependency "activerecord", ">= 7.0"
+  spec.add_dependency "activejob", ">= 7.0"
   spec.add_dependency "redis"
   spec.add_dependency "connection_pool"
   spec.add_dependency "aasm"
-  spec.add_dependency "sidekiq", "> 4", "<= 5.2.7"
-  spec.add_dependency "sidekiq-unique-jobs", "~> 5.0"
   spec.add_dependency "tabstabs"
 
   spec.add_development_dependency "bundler"
   spec.add_development_dependency "rake"
-  spec.add_development_dependency "rspec", "~> 3.0"
-  spec.add_development_dependency "sqlite3", "~> 1.4"
-  spec.add_development_dependency "database_cleaner", "~> 1.5"
-  spec.add_development_dependency "rspec-sidekiq", "~> 3.1"
-  spec.add_development_dependency "mock_redis"
+  spec.add_development_dependency "rspec-rails", "~> 7.0"
+  spec.add_development_dependency "sqlite3", "~> 1.7"
+  spec.add_development_dependency "database_cleaner", "~> 2.0"
+  spec.add_development_dependency "database_cleaner-redis", "~> 2.0"
   spec.add_development_dependency "standard"
 end
