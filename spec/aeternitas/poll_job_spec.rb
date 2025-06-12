@@ -138,28 +138,37 @@ RSpec.describe Aeternitas::PollJob do
     end
 
     context "when sleep_on_guard_locked is false (default)" do
-      let(:full_pollable) { FullPollable.create!(name: "Full") }
-      let(:full_meta_data) { full_pollable.pollable_meta_data }
-
-      it "retries the job with a staggered delay" do
+      it "retries the job with a staggered delay based on rank" do
         travel_to Time.current do
-          described_class.perform_later(full_meta_data.id)
-          full_meta_data.enqueue!
+          # Create three pollables that will share the same guard key
+          pollables = 3.times.map do |i|
+            p = FullPollable.create!(name: "p#{i}")
+            p.pollable_configuration.guard_options[:key] = ->(_) { "shared-guard" }
+            p
+          end
 
+          # Enqueue jobs sequentially
+          pollables.each do |p|
+            described_class.perform_later(p.pollable_meta_data.id)
+            travel 1.second
+          end
+
+          expect(Aeternitas::UniqueJobLock.count).to eq(3)
           perform_enqueued_jobs
+          expect(enqueued_jobs.size).to eq(3)
 
-          expect(full_meta_data.reload.enqueued?).to be true
-          expect(enqueued_jobs.size).to eq(1)
-
-          enqueued_job = enqueued_jobs.last
+          retry_times = enqueued_jobs.sort_by { |j| j[:at] }.map { |j| Time.at(j[:at]) }
           base_delay = (guard_locked_error.timeout - Time.now).to_f
+          cooldown = pollables.first.guard.cooldown.to_f
 
-          stagger_delay = 1 * full_pollable.guard.cooldown.to_f
-          expected_wait = base_delay + stagger_delay
+          expected_wait1 = base_delay + (1 * cooldown)
+          expect(retry_times[0]).to be_within(2.second).of(Time.current + expected_wait1.seconds)
 
-          # 2 second jitter
-          expect(Time.at(enqueued_job[:at])).to be_within(2.second).of(Time.current + expected_wait.seconds)
-          expect(Aeternitas::UniqueJobLock.count).to eq(1)
+          expected_wait2 = base_delay + (2 * cooldown)
+          expect(retry_times[1]).to be_within(2.second).of(Time.current + expected_wait2.seconds)
+
+          expected_wait3 = base_delay + (3 * cooldown)
+          expect(retry_times[2]).to be_within(2.second).of(Time.current + expected_wait3.seconds)
         end
       end
     end

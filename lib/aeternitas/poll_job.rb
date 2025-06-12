@@ -63,9 +63,18 @@ module Aeternitas
         retry_job(wait: 2.seconds)
       else
         guard_key_digest = self.class.generate_guard_key_digest(pollable)
-        identical_guard_key_count = Aeternitas::UniqueJobLock.where(guard_key_digest: guard_key_digest).count
+        lock_digest = self.class.generate_lock_digest(arguments.first)
+        unique_lock = Aeternitas::UniqueJobLock.find_by(lock_digest: lock_digest)
 
-        stagger_delay = identical_guard_key_count * pollable.guard.cooldown.to_f
+        rank = if unique_lock
+          Aeternitas::UniqueJobLock.where(guard_key_digest: guard_key_digest)
+            .where("created_at <= ?", unique_lock.created_at)
+            .count
+        else
+          Aeternitas::UniqueJobLock.where(guard_key_digest: guard_key_digest).count
+        end
+
+        stagger_delay = rank * pollable.guard.cooldown.to_f
         jitter = rand(0.0..2.0)
         total_wait = base_delay + stagger_delay + jitter
 
