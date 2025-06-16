@@ -31,14 +31,23 @@ module Aeternitas
     validates :next_polling, presence: true
 
     aasm column: :state do
+      # Only pollables in this state are picked up for enqueueing ('next_polling')
       state :waiting, initial: true
+
+      # A PollJob has been submitted and the pollable is waiting for a worker to start processing.
       state :enqueued
+
+      # A worker has picked up the job and is currently executing the pollable.
       state :active
+
+      # Polling has been permanently disabled (e.g., due to retries exhausted).
       state :deactivated
+
+      # A generic error occurred during polling. The job will be retried.
       state :errored
 
       event :enqueue do
-        transitions from: %i[waiting deactivated errored], to: :enqueued
+        transitions from: %i[waiting deactivated errored active], to: :enqueued
       end
 
       event :poll do

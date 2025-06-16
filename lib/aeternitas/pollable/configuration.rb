@@ -43,7 +43,7 @@ module Aeternitas
         @deactivation_errors = []
         @ignored_errors = []
         @queue = "polling"
-        @sleep_on_guard_locked = true
+        @sleep_on_guard_locked = false
       end
 
       def copy
