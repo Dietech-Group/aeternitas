@@ -1,9 +1,9 @@
-require_relative "application_job"
+require_relative "aeternitas_job"
 require "digest"
 
 module Aeternitas
   # ActiveJob worker responsible for executing the polling.
-  class PollJob < ApplicationJob
+  class PollJob < AeternitasJob
     queue_as :polling
 
     LOCK_EXPIRATION = 1.month
@@ -37,7 +37,7 @@ module Aeternitas
       end
     end
 
-    # === Retry Logic ===
+    # === Retry Configuration (using standard ActiveJob) ===
     retry_on StandardError,
       attempts: MAX_TOTAL_ATTEMPTS,
       wait: ->(executions) { execution_wait_time(executions) },
@@ -60,7 +60,7 @@ module Aeternitas
           ActiveJob::Base.logger.warn "[Aeternitas::PollJob] Guard locked for #{arguments.first}. Sleep for #{base_delay.round(2)}s."
           sleep(base_delay)
         end
-        retry_job(wait: 2.seconds)
+        retry_job
       else
         guard_key_digest = self.class.generate_guard_key_digest(pollable)
         lock_digest = self.class.generate_lock_digest(arguments.first)
@@ -120,6 +120,7 @@ module Aeternitas
       meta_data = Aeternitas::PollableMetaData.find_by(id: pollable_meta_data_id)
       meta_data&.disable_polling("Retries exhausted. Last error: #{error&.message}")
       cleanup_lock("retries_exhausted")
+      raise error
     end
 
     def cleanup_lock(reason = "unknown")

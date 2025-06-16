@@ -90,12 +90,13 @@ RSpec.describe Aeternitas::PollJob do
         Aeternitas::UniqueJobLock.create!(lock_digest: digest, expires_at: 1.month.from_now)
       end
 
-      it "disables the pollable and cleans up the lock" do
+      it "disables the pollable, cleans up the lock, and raises the error" do
         expect(Aeternitas::UniqueJobLock.count).to eq(1)
 
         job_instance = described_class.new(meta_data.id)
         error = RuntimeError.new("Polling Failed")
-        job_instance.handle_retries_exhausted(error)
+
+        expect { job_instance.handle_retries_exhausted(error) }.to raise_error(error)
 
         meta_data.reload
         expect(meta_data.deactivated?).to be true
@@ -131,7 +132,8 @@ RSpec.describe Aeternitas::PollJob do
 
           expect(enqueued_jobs.size).to eq(1)
           enqueued_job = enqueued_jobs.last
-          expect(Time.at(enqueued_job[:at])).to be_within(1.second).of(Time.current + 2.seconds)
+          # When it retries immediately, no :at time is set.
+          expect(enqueued_job[:at]).to be_nil
           expect(meta_data_with_sleep.reload.enqueued?).to be true
         end
       end
