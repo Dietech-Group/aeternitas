@@ -1,146 +1,176 @@
 require "spec_helper"
+require "concurrent"
 
 describe Aeternitas::Guard do
+  let(:lock_key) { "MyId" }
+  let(:cooldown) { 5.seconds }
+  let(:timeout) { 10.minutes }
+  let(:guard) { Aeternitas::Guard.new(lock_key, cooldown, timeout) }
+
+  RSpec.shared_examples "a guard that denies access" do
+    it "does not run the block" do
+      change_me = false
+      expect { guard.with_lock { change_me = true } }.to raise_error(Aeternitas::Guard::GuardIsLocked)
+      expect(change_me).to be false
+    end
+
+    it "raises GuardIsLocked error with the correct timeout" do
+      expect { guard.with_lock {} }.to raise_error(Aeternitas::Guard::GuardIsLocked) do |e|
+        expect(e.timeout).to be_within(1.second).of(expected_timeout)
+      end
+    end
+
+    it "does not change the lock" do
+      existing_token = Aeternitas::GuardLock.find_by(lock_key: lock_key).token
+      expect { guard.with_lock {} }.to raise_error(Aeternitas::Guard::GuardIsLocked)
+      db_lock = Aeternitas::GuardLock.find_by(lock_key: lock_key)
+      expect(db_lock.token).to eq(existing_token)
+      expect(db_lock.token).not_to eq(guard.token)
+    end
+  end
+
   describe "#with_lock" do
-    let(:lock) { Aeternitas::Guard.new("MyId", 5.seconds, 10.minutes) }
     context "when the lock is available" do
-      before(:each) do
-        @change_me = false
-        lock.with_lock { @change_me = true }
-      end
-
       it "runs the block" do
-        expect(@change_me).to be true
+        change_me = false
+        guard.with_lock { change_me = true }
+        expect(change_me).to be true
       end
 
-      it "sets lock key state to 'cooldown'" do
-        expect(JSON.parse(Aeternitas.redis.get("MyId"))["state"]).to eq("cooldown")
-      end
-
-      it "sets lock key timeout to 5 seconds" do
-        expect(Time.parse(JSON.parse(Aeternitas.redis.get("MyId"))["locked_until"]))
-          .to be_between(4.seconds.from_now, 5.seconds.from_now)
-      end
-
-      it "sets the locks cooldown time to 5 seconds" do
-        expect(JSON.parse(Aeternitas.redis.get("MyId"))["cooldown"].to_i).to be(5.seconds.to_i)
-      end
-
-      it "sets the locks timeout value 10 minutes" do
-        expect(JSON.parse(Aeternitas.redis.get("MyId"))["timeout"].to_i).to be(10.minutes.to_i)
-      end
-
-      it "set the key ttl to 5 seconds" do
-        expect(Aeternitas.redis.ttl("MyId")).to be_between(4, 5)
+      it "creates a lock record in cooldown state after execution" do
+        guard.with_lock {}
+        lock_record = Aeternitas::GuardLock.find_by(lock_key: lock_key)
+        expect(lock_record).to be_present
+        expect(lock_record.cooldown?).to be true
+        expect(lock_record.locked_until).to be_within(1.second).of(cooldown.from_now)
       end
     end
 
     context "when the lock is held by another process" do
-      around(:each) do |example|
-        Aeternitas::Guard.new(lock.id, lock.cooldown, lock.timeout).with_lock { example.run }
+      let(:expected_timeout) { timeout.from_now }
+      before do
+        Aeternitas::GuardLock.create!(
+          lock_key: lock_key,
+          state: :processing,
+          token: "other-token",
+          locked_until: timeout.from_now
+        )
       end
 
-      it "does not run the block" do
-        change_me = false
-        begin
-          lock.with_lock do
-            change_me = true
-          end
-        rescue; end
-        expect(change_me).to be false
-      end
-
-      it "raises a lock error" do
-        expect { lock.with_lock }.to raise_exception(Aeternitas::Guard::GuardIsLocked) do |e|
-          expect(e.timeout).to be_between(4.seconds.from_now, 5.seconds.from_now)
-        end
-      end
-
-      it "does not change the lock" do
-        expect(JSON.parse(Aeternitas.redis.get(lock.id))["token"]).not_to be(lock.token)
-      end
+      it_behaves_like "a guard that denies access"
     end
 
     context "when the lock is in cooldown" do
-      before(:each) do
-        Aeternitas::Guard.new(lock.id, lock.cooldown, lock.timeout).with_lock {}
+      let(:expected_timeout) { cooldown.from_now }
+      before do
+        Aeternitas::Guard.new(lock_key, cooldown, timeout).with_lock {}
       end
 
-      it "does not run the block" do
-        change_me = false
-        begin
-          lock.with_lock do
-            change_me = true
-          end
-        rescue; end
-        expect(change_me).to be false
-      end
-
-      it "raises a lock error" do
-        expect { lock.with_lock }.to raise_exception(Aeternitas::Guard::GuardIsLocked) do |e|
-          expect(e.timeout).to be_between(4.seconds.from_now, 5.seconds.from_now)
-        end
-      end
-
-      it "does not change the lock" do
-        expect(JSON.parse(Aeternitas.redis.get(lock.id))["token"]).not_to be(lock.token)
-      end
+      it_behaves_like "a guard that denies access"
     end
 
     context "when the lock is sleeping" do
-      let(:sleep_timeout) { 20.minutes.from_now }
-      before(:each) do
-        Aeternitas::Guard.new(lock.id, lock.cooldown, lock.timeout)
-          .sleep_until(sleep_timeout)
+      let(:expected_timeout) { 20.minutes.from_now }
+      before do
+        Aeternitas::Guard.new(lock_key, cooldown, timeout).sleep_until(expected_timeout)
       end
 
-      it "does not run the block" do
-        change_me = false
-        begin
-          lock.with_lock do
-            change_me = true
+      it_behaves_like "a guard that denies access"
+    end
+
+    context "when an existing lock has expired" do
+      # Loop through all the states
+      [:processing, :sleeping, :cooldown].each do |expired_state|
+        context "from the '#{expired_state}' state" do
+          before do
+            Aeternitas::GuardLock.create!(
+              lock_key: lock_key,
+              state: expired_state,
+              token: "other-token",
+              locked_until: 1.minute.ago
+            )
           end
-        rescue; end
-        expect(change_me).to be false
-      end
 
-      it "raises a lock error" do
-        expect { lock.with_lock }.to raise_exception(Aeternitas::Guard::GuardIsLocked) do |e|
-          expect(e.timeout).to be_within(1.second).of(sleep_timeout)
+          it "takes over the lock and runs the block" do
+            change_me = false
+            guard.with_lock { change_me = true }
+            expect(change_me).to be true
+          end
+
+          it "updates the lock record to cooldown state with the new token" do
+            guard.with_lock {}
+            lock_record = Aeternitas::GuardLock.find_by(lock_key: lock_key)
+            expect(lock_record.token).to eq(guard.token)
+            expect(lock_record.cooldown?).to be true
+          end
         end
-      end
-
-      it "does not change the lock" do
-        expect(JSON.parse(Aeternitas.redis.get(lock.id))["token"]).not_to be(lock.token)
       end
     end
   end
 
   describe "#sleep_until" do
-    before(:each) do
-      Aeternitas::Guard.new("MyId", 5.seconds, 10.minutes)
-        .sleep_until(5.hours.from_now)
+    let(:sleep_until_time) { 5.hours.from_now }
+
+    context "when no lock exists" do
+      it "creates a new sleeping lock" do
+        guard.sleep_until(sleep_until_time, "API limit")
+        lock_record = Aeternitas::GuardLock.find_by(lock_key: lock_key)
+        expect(lock_record).to be_present
+        expect(lock_record.sleeping?).to be true
+        expect(lock_record.locked_until).to be_within(1.second).of(sleep_until_time)
+        expect(lock_record.reason).to eq("API limit")
+      end
     end
 
-    it "sets lock key state to 'sleeping'" do
-      expect(JSON.parse(Aeternitas.redis.get("MyId"))["state"]).to eq("sleeping")
-    end
+    context "when a lock already exists" do
+      before do
+        Aeternitas::GuardLock.create!(
+          lock_key: lock_key,
+          state: :processing,
+          token: "other-token",
+          locked_until: 1.minute.from_now
+        )
+      end
 
-    it "sets lock key timeout to 5 hours" do
-      expect(Time.parse(JSON.parse(Aeternitas.redis.get("MyId"))["locked_until"]))
-        .to be_within(1.second).of(5.hour.from_now)
+      it "updates the existing lock to sleeping state" do
+        guard.sleep_until(sleep_until_time)
+        lock_record = Aeternitas::GuardLock.find_by(lock_key: lock_key)
+        expect(lock_record.sleeping?).to be true
+        expect(lock_record.token).to eq(guard.token)
+        expect(lock_record.locked_until).to be_within(1.second).of(sleep_until_time)
+      end
     end
+  end
 
-    it "sets the locks cooldown time to 5 seconds" do
-      expect(JSON.parse(Aeternitas.redis.get("MyId"))["cooldown"].to_i).to be(5.seconds.to_i)
-    end
+  describe "Concurrency" do
+    let(:concurrent_lock_key) { "ConcurrentLock" }
 
-    it "sets the locks timeout value 10 minutes" do
-      expect(JSON.parse(Aeternitas.redis.get("MyId"))["timeout"].to_i).to be(10.minutes.to_i)
-    end
+    context "when multiple processes try to create the same lock" do
+      it "only allows one to succeed without raising errors" do
+        success_count = Concurrent::AtomicFixnum.new(0)
+        error_count = Concurrent::AtomicFixnum.new(0)
 
-    it "set the key ttl to 5 hours" do
-      expect(Aeternitas.redis.ttl("MyId")).to be_within(2.seconds).of(5.hours.to_i)
+        threads = 3.times.map do
+          Thread.new do
+            # Each thread needs its own DB connection from the pool
+            ActiveRecord::Base.connection_pool.with_connection do
+              new_guard = Aeternitas::Guard.new(concurrent_lock_key, 0.1.seconds)
+              new_guard.with_lock do
+                success_count.increment
+                sleep 0.1
+              end
+            end
+          rescue Aeternitas::Guard::GuardIsLocked
+            error_count.increment
+          end
+        end
+
+        threads.each(&:join)
+
+        expect(success_count.value).to eq(1)
+        expect(error_count.value).to eq(2)
+        expect(Aeternitas::GuardLock.where(lock_key: concurrent_lock_key).count).to eq(1)
+      end
     end
   end
 end

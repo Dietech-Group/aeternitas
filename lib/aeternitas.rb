@@ -13,6 +13,7 @@ require "aeternitas/errors"
 require "aeternitas/storage_adapter"
 require "aeternitas/metrics"
 require "aeternitas/unique_job_lock"
+require "aeternitas/guard_lock"
 require "aeternitas/aeternitas_job"
 require "aeternitas/poll_job"
 

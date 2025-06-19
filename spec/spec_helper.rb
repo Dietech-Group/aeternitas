@@ -9,8 +9,9 @@ require "database_cleaner/redis"
 # Configure ActiveJob test adapter
 ActiveJob::Base.queue_adapter = :test
 
-# configure active record
-ActiveRecord::Base.establish_connection adapter: "sqlite3", database: ":memory:"
+# Use a file-based database for tests that use threads.
+FileUtils.mkdir_p "db"
+ActiveRecord::Base.establish_connection adapter: "sqlite3", database: "db/test.sqlite3"
 load File.dirname(__FILE__) + "/schema.rb"
 require File.dirname(__FILE__) + "/pollables.rb"
 # configure aeternitas

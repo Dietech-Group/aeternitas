@@ -46,4 +46,16 @@ ActiveRecord::Schema.define do
   add_index :aeternitas_unique_job_locks, :lock_digest, unique: true
   add_index :aeternitas_unique_job_locks, :guard_key_digest
   add_index :aeternitas_unique_job_locks, :expires_at
+
+  create_table :aeternitas_guard_locks, force: true do |t|
+    t.string :lock_key, null: false
+    t.string :state, null: false
+    t.string :token, null: false, limit: 20
+    t.datetime :locked_until, null: false
+    t.text :reason
+
+    t.timestamps
+  end
+  add_index :aeternitas_guard_locks, :lock_key, unique: true
+  add_index :aeternitas_guard_locks, :locked_until
 end
