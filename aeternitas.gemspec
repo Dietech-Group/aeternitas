@@ -25,7 +25,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "redis"
   spec.add_dependency "connection_pool"
   spec.add_dependency "aasm"
-  spec.add_dependency "tabstabs"
 
   spec.add_development_dependency "bundler"
   spec.add_development_dependency "rake"

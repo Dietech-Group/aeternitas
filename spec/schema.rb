@@ -58,4 +58,12 @@ ActiveRecord::Schema.define do
   end
   add_index :aeternitas_guard_locks, :lock_key, unique: true
   add_index :aeternitas_guard_locks, :locked_until
+
+  create_table :aeternitas_metrics, force: true do |t|
+    t.string :name, null: false
+    t.string :pollable_class, null: false
+    t.float :value, null: false
+    t.datetime :created_at, null: false
+  end
+  add_index :aeternitas_metrics, [:name, :pollable_class, :created_at]
 end

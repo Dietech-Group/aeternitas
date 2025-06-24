@@ -2,7 +2,6 @@ require "ostruct"
 require "active_support/all"
 require "redis"
 require "connection_pool"
-require "tabs_tabs"
 require "aeternitas/version"
 require "aeternitas/guard"
 require "aeternitas/pollable"
@@ -11,6 +10,7 @@ require "aeternitas/source"
 require "aeternitas/polling_frequency"
 require "aeternitas/errors"
 require "aeternitas/storage_adapter"
+require "aeternitas/metric"
 require "aeternitas/metrics"
 require "aeternitas/unique_job_lock"
 require "aeternitas/guard_lock"
@@ -73,9 +73,6 @@ module Aeternitas
       @storage_adapter.new(storage_adapter_config)
     end
 
-    def redis=(redis_config)
-      @redis = redis_config
-      TabsTabs.configure { |tabstabs_config| tabstabs_config.redis = redis_config }
-    end
+    attr_writer :redis
   end
 end
