@@ -1,7 +1,5 @@
 require "ostruct"
 require "active_support/all"
-require "redis"
-require "connection_pool"
 require "aeternitas/version"
 require "aeternitas/guard"
 require "aeternitas/pollable"
@@ -19,12 +17,6 @@ require "aeternitas/poll_job"
 
 # Aeternitas
 module Aeternitas
-  # Get the configured redis connection
-  # @return [ConnectionPool::Wrapper] returns a redis connection from the pool
-  def self.redis
-    @redis ||= ConnectionPool::Wrapper.new(size: 5, timeout: 3) { Redis.new(config.redis) }
-  end
-
   # Access the configuration
   # @return [Aeternitas::Configuration] the Aeternitas configuration
   def self.config
@@ -50,15 +42,12 @@ module Aeternitas
   end
 
   # Stores the global Aeternitas configuration
-  # @!attribute [rw] redis
-  #   Redis configuration hash, Default: nil
   # @!attribute [rw] storage_adapter_config
   #   Storage adapter configuration, See {Aeternitas::StorageAdapter} for configuration options
   # @!attribute [rw] storage_adapter
   #   Storage adapter class. Default: {Aeternitas::StorageAdapter::File}
   class Configuration
     attr_accessor :storage_adapter, :storage_adapter_config
-    attr_reader :redis
 
     def initialize
       @storage_adapter = Aeternitas::StorageAdapter::File
@@ -72,7 +61,5 @@ module Aeternitas
     def get_storage_adapter
       @storage_adapter.new(storage_adapter_config)
     end
-
-    attr_writer :redis
   end
 end

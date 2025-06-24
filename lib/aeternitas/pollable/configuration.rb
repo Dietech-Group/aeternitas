@@ -9,7 +9,7 @@ module Aeternitas
     # @!attribute [rw] after_polling
     #   Methods to be run after each successful poll
     # @!attribute [rw] queue
-    #   Sidekiq queue the poll job will be enqueued in (Default: 'polling')
+    #   The queue the poll job will be enqueued in (Default: 'polling')
     # @!attribute [rw] guard_options
     #   Configuration of the pollables lock (Default: key => class+id, cooldown => 5.seconds, timeout => 10.minutes)
     # @!attribute [rw] deactivation_errors
@@ -18,8 +18,8 @@ module Aeternitas
     #   Errors in this list will be wrapped by {Aeternitas::Error::Ignored} if they occur while polling
     #   (i.e. ignore in your exception tracker)
     # @!attribute [rw] sleep_on_guard_locked
-    #   When set to true poll jobs (and effectively the Sidekiq worker thread) will sleep until the
-    #   lock is released if the lock could not be acquired. (Default: true)
+    #   When set to true, the ActiveJob worker thread will sleep until the
+    #   lock is released if the lock could not be acquired. (Default: false)
     class Configuration
       attr_accessor :deactivation_errors,
         :before_polling,

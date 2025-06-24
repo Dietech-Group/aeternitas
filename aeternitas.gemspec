@@ -22,8 +22,6 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "activerecord", ">= 7.0"
   spec.add_dependency "activejob", ">= 7.0"
-  spec.add_dependency "redis"
-  spec.add_dependency "connection_pool"
   spec.add_dependency "aasm"
 
   spec.add_development_dependency "bundler"
@@ -31,6 +29,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec-rails", "~> 7.0"
   spec.add_development_dependency "sqlite3", "~> 1.7"
   spec.add_development_dependency "database_cleaner", "~> 2.0"
-  spec.add_development_dependency "database_cleaner-redis", "~> 2.0"
   spec.add_development_dependency "standard"
 end
