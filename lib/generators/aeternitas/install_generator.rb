@@ -25,7 +25,9 @@ module Aeternitas
     end
 
     def reminder
-      say "Don't forget to regularly run 'Aeternitas.enqueue_due_pollables'. E.g using 'whenever'", :red
+      say "\nDon't forget to regularly run 'Aeternitas.enqueue_due_pollables'. E.g using 'whenever'", :red
+      say "You can also generate sample maintenance tasks by running:", :yellow
+      say "  rails generate aeternitas:maintenance", :yellow
     end
 
     def self.next_migration_number(dirname)
