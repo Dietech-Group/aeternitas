@@ -25,9 +25,13 @@ module Aeternitas
     end
 
     def reminder
-      say "\nDon't forget to regularly run 'Aeternitas.enqueue_due_pollables'. E.g using 'whenever'", :red
-      say "You can also generate sample maintenance tasks by running:", :yellow
-      say "  rails generate aeternitas:maintenance", :yellow
+      say "\nDon't forget to regularly run 'Aeternitas.enqueue_due_pollables', e.g., using 'whenever'", :red
+      say "You should also schedule maintenance jobs:\n", :yellow
+      say "To clean up old metrics (if metrics are enabled):\n"
+      say "    Aeternitas::CleanupOldMetricsJob.perform_later\n", :white
+      say "To clean up stale locks from crashed workers:\n"
+      say "    Aeternitas::CleanupStaleLocksJob.perform_later\n", :white
+      say "Schedule these to run periodically, for example, once a week.\n"
     end
 
     def self.next_migration_number(dirname)

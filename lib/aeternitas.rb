@@ -10,10 +10,13 @@ require "aeternitas/errors"
 require "aeternitas/storage_adapter"
 require "aeternitas/metric"
 require "aeternitas/metrics"
+require "aeternitas/maintenance"
 require "aeternitas/unique_job_lock"
 require "aeternitas/guard_lock"
 require "aeternitas/aeternitas_job"
 require "aeternitas/poll_job"
+require "aeternitas/cleanup_stale_locks_job"
+require "aeternitas/cleanup_old_metrics_job"
 
 # Aeternitas
 module Aeternitas
@@ -46,14 +49,23 @@ module Aeternitas
   #   Storage adapter configuration, See {Aeternitas::StorageAdapter} for configuration options
   # @!attribute [rw] storage_adapter
   #   Storage adapter class. Default: {Aeternitas::StorageAdapter::File}
+  # @!attribute [rw] metrics_enabled
+  #   Whether to log metrics to the database. Default: false
+  # @!attribute [rw] metric_retention_period
+  #   How long to keep metric data before it can be cleaned up. Default: 90.days
   class Configuration
-    attr_accessor :storage_adapter, :storage_adapter_config
+    attr_accessor :storage_adapter,
+      :storage_adapter_config,
+      :metrics_enabled,
+      :metric_retention_period
 
     def initialize
       @storage_adapter = Aeternitas::StorageAdapter::File
       @storage_adapter_config = {
         directory: defined?(Rails) ? File.join(Rails.root, %w[aeternitas_data]) : File.join(Dir.getwd, "aeternitas_data")
       }
+      @metrics_enabled = false
+      @metric_retention_period = 90.days
     end
 
     # Creates a new StorageAdapter instance with the given options

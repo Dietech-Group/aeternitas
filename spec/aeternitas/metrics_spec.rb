@@ -1,6 +1,12 @@
 require "spec_helper"
 
 describe Aeternitas::Metrics do
+  around(:each) do |example|
+    original_metrics_state = Aeternitas.config.metrics_enabled
+    Aeternitas.config.metrics_enabled = true
+    example.run
+    Aeternitas.config.metrics_enabled = original_metrics_state
+  end
   let(:pollable_class) { FullPollable }
   let!(:metric1) { Aeternitas::Metric.create!(name: "polls", pollable_class: pollable_class.name, value: 1, created_at: 12.hours.ago) }
   let!(:metric2) { Aeternitas::Metric.create!(name: "polls", pollable_class: pollable_class.name, value: 1, created_at: 20.minutes.ago) }

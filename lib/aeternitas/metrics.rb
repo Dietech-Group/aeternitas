@@ -51,7 +51,8 @@ module Aeternitas
     # @param [Class] pollable_class the class of the pollable
     # @param [Float] value the value to log
     def self.log_value(name, pollable_class, value)
-      return unless AVAILABLE_METRICS.include?(name)
+      return unless Aeternitas.config.metrics_enabled && AVAILABLE_METRICS.include?(name)
+
       Aeternitas::Metric.create(
         name: name.to_s,
         pollable_class: pollable_class.name,
