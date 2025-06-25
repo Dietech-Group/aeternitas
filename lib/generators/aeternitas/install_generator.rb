@@ -14,7 +14,7 @@ module Aeternitas
     def create_migration_file
       migration_dir = File.expand_path("db/migrate")
       if self.class.migration_exists?(migration_dir, "add_aeternitas")
-        ::Kernel.warn "Migration already exists: #{template}"
+        ::Kernel.warn "Migration 'add_aeternitas' already exists. Skipping."
       else
         migration_template("add_aeternitas.rb.erb", "db/migrate/add_aeternitas.rb")
       end

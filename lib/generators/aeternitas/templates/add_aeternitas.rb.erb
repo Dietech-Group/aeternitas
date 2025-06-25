@@ -52,6 +52,6 @@ class AddAeternitas < ActiveRecord::Migration[<%= ActiveRecord::Migration.curren
       t.float :value, null: false
       t.datetime :created_at, null: false
     end
-    add_index :aeternitas_metrics, [:name, :pollable_class, :created_at]
+    add_index :aeternitas_metrics, [:name, :pollable_class, :created_at], name: 'idx_aeternitas_metrics'
   end
 end
