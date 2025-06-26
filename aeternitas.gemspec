@@ -5,7 +5,7 @@ require "aeternitas/version"
 Gem::Specification.new do |spec|
   spec.name = "aeternitas"
   spec.version = Aeternitas::VERSION
-  spec.authors = ["Michael Prilop", "Max Kießling"]
+  spec.authors = ["Michael Prilop", "Max Kießling", "Louis Franzke"]
   spec.email = ["prilop@infai.org"]
 
   spec.summary = "æternitas - version 2"
