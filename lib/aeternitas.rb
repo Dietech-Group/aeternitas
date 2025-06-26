@@ -1,8 +1,5 @@
 require "ostruct"
 require "active_support/all"
-require "redis"
-require "connection_pool"
-require "tabs_tabs"
 require "aeternitas/version"
 require "aeternitas/guard"
 require "aeternitas/pollable"
@@ -11,19 +8,18 @@ require "aeternitas/source"
 require "aeternitas/polling_frequency"
 require "aeternitas/errors"
 require "aeternitas/storage_adapter"
+require "aeternitas/metric"
 require "aeternitas/metrics"
+require "aeternitas/maintenance"
 require "aeternitas/unique_job_lock"
+require "aeternitas/guard_lock"
 require "aeternitas/aeternitas_job"
 require "aeternitas/poll_job"
+require "aeternitas/cleanup_stale_locks_job"
+require "aeternitas/cleanup_old_metrics_job"
 
 # Aeternitas
 module Aeternitas
-  # Get the configured redis connection
-  # @return [ConnectionPool::Wrapper] returns a redis connection from the pool
-  def self.redis
-    @redis ||= ConnectionPool::Wrapper.new(size: 5, timeout: 3) { Redis.new(config.redis) }
-  end
-
   # Access the configuration
   # @return [Aeternitas::Configuration] the Aeternitas configuration
   def self.config
@@ -49,32 +45,33 @@ module Aeternitas
   end
 
   # Stores the global Aeternitas configuration
-  # @!attribute [rw] redis
-  #   Redis configuration hash, Default: nil
   # @!attribute [rw] storage_adapter_config
   #   Storage adapter configuration, See {Aeternitas::StorageAdapter} for configuration options
   # @!attribute [rw] storage_adapter
   #   Storage adapter class. Default: {Aeternitas::StorageAdapter::File}
+  # @!attribute [rw] metrics_enabled
+  #   Whether to log metrics to the database. Default: false
+  # @!attribute [rw] metric_retention_period
+  #   How long to keep metric data before it can be cleaned up. Default: 90.days
   class Configuration
-    attr_accessor :storage_adapter, :storage_adapter_config
-    attr_reader :redis
+    attr_accessor :storage_adapter,
+      :storage_adapter_config,
+      :metrics_enabled,
+      :metric_retention_period
 
     def initialize
       @storage_adapter = Aeternitas::StorageAdapter::File
       @storage_adapter_config = {
-        directory: defined?(Rails) ? File.join(Rails.root, %w[aeternitas_data]) : File.join(Dir.getwd, "aeternitas_data")
+        directory: defined?(Rails) ? Rails.root.join("storage", "aeternitas") : File.join(Dir.getwd, "aeternitas_data")
       }
+      @metrics_enabled = false
+      @metric_retention_period = 90.days
     end
 
     # Creates a new StorageAdapter instance with the given options
     # @return [Aeternitas::StoragesAdapter] new storage adapter instance
     def get_storage_adapter
       @storage_adapter.new(storage_adapter_config)
-    end
-
-    def redis=(redis_config)
-      @redis = redis_config
-      TabsTabs.configure { |tabstabs_config| tabstabs_config.redis = redis_config }
     end
   end
 end
