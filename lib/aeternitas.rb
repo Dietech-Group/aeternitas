@@ -62,7 +62,7 @@ module Aeternitas
     def initialize
       @storage_adapter = Aeternitas::StorageAdapter::File
       @storage_adapter_config = {
-        directory: defined?(Rails) ? File.join(Rails.root, %w[aeternitas_data]) : File.join(Dir.getwd, "aeternitas_data")
+        directory: defined?(Rails) ? Rails.root.join("storage", "aeternitas") : File.join(Dir.getwd, "aeternitas_data")
       }
       @metrics_enabled = false
       @metric_retention_period = 90.days
