@@ -1,38 +1,37 @@
 $LOAD_PATH.unshift File.expand_path("../../lib", __FILE__)
 require "active_record"
+require "active_job"
+require "active_support/testing/time_helpers"
 require "aeternitas"
 require "database_cleaner"
-require "rspec-sidekiq"
 
-# configure active record
-ActiveRecord::Base.establish_connection adapter: "sqlite3", database: ":memory:"
+# Configure ActiveJob test adapter
+ActiveJob::Base.queue_adapter = :test
+
+# Use a file-based database for tests that use threads.
+FileUtils.mkdir_p "db"
+ActiveRecord::Base.establish_connection adapter: "sqlite3", database: "db/test.sqlite3"
 load File.dirname(__FILE__) + "/schema.rb"
 require File.dirname(__FILE__) + "/pollables.rb"
+
 # configure aeternitas
 Aeternitas.configure do |conf|
-  conf.redis = {host: "127.0.0.1"}
   conf.storage_adapter_config = {
     directory: "/tmp/aeternitas_tests/"
   }
 end
 
-DatabaseCleaner[:active_record].strategy = :transaction
-DatabaseCleaner[:redis].strategy = :truncation
-
-Sidekiq::Testing.server_middleware do |chain|
-  chain.add Aeternitas::Sidekiq::Middleware
-end
-
-RSpec::Sidekiq.configure do |config|
-  config.clear_all_enqueued_jobs = true
-  config.enable_terminal_colours = true
-  config.warn_when_jobs_not_processed_by_sidekiq = true
-end
+DatabaseCleaner.strategy = :transaction
 
 RSpec.configure do |config|
+  config.order = :random # Tests should not depend on each other
+
+  config.include ActiveJob::TestHelper
+  config.include ActiveSupport::Testing::TimeHelpers
+
   config.before(:suite) do
-    DatabaseCleaner[:active_record].strategy = :transaction
-    DatabaseCleaner[:redis].strategy = :truncation
+    # Clean once before suite using schema.rb definitions with force: true
+    DatabaseCleaner.clean_with :truncation
   end
 
   config.around(:each) do |example|
@@ -45,5 +44,11 @@ RSpec.configure do |config|
     example.run
   ensure
     FileUtils.rm_rf(Aeternitas.config.storage_adapter_config[:directory])
+  end
+
+  # Clear jobs before each test example
+  config.before(:each) do
+    clear_enqueued_jobs
+    clear_performed_jobs
   end
 end

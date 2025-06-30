@@ -3,7 +3,7 @@ require "securerandom"
 
 module Aeternitas
   # A distributed lock that can not be acquired after being unlocked for a certain time (cooldown period).
-  # Using Redis key expiration we ensure locks are released even after workers crash after a configurable timout period.
+  # Using a database table (`aeternitas_guard_locks`) with pessimistic locking we ensure atomicity and prevent race conditions.
   #
   # @example
   #   guard = Aeternitas::Guard.new("Twitter-MY_API_KEY", 5.seconds)
@@ -13,7 +13,7 @@ module Aeternitas
   #     end
   #   rescue Twitter::TooManyRequests => e
   #     guard.sleep_until(e.rate_limit.reset_at)
-  #     raise Aeternitas::Guard::GuardIsLocked(e.rate_limit.reset_at)
+  #     raise Aeternitas::Guard::GuardIsLocked.new(e.rate_limit.reset_at)
   #   end
   #
   # @!attribute [r] id
@@ -42,7 +42,7 @@ module Aeternitas
 
     # Runs a given block if the lock can be acquired and releases the lock afterwards.
     #
-    # @raise [Aeternitas::LockWithCooldown::GuardIsLocked] if the lock can not be acquired
+    # @raise [Aeternitas::Guard::GuardIsLocked] if the lock can not be acquired
     # @example
     #   Guard.new("MyId", 5.seconds, 10.minutes).with_lock { do_request() }
     def with_lock
@@ -52,6 +52,22 @@ module Aeternitas
       ensure
         unlock
       end
+    end
+
+    # Tries to unlock the guard and starts the cooldown phase.
+    # It only releases the lock if the token matches and the state is 'processing'.
+    def unlock
+      Aeternitas::GuardLock.transaction do
+        lock = Aeternitas::GuardLock.where(lock_key: @id, token: @token).lock.first
+        return false unless lock&.processing?
+
+        lock.update!(
+          state: :cooldown,
+          locked_until: @cooldown.from_now,
+          reason: nil
+        )
+      end
+      true
     end
 
     # Locks the guard until the given time.
@@ -74,111 +90,62 @@ module Aeternitas
     private
 
     # Tries to acquire the lock.
-    #
-    # @example The Redis value looks like this
-    #   {
-    #     id: 'MyId'
-    #     state: 'processing'
-    #     timeout: '3600'
-    #     cooldown: '5'
-    #     locked_until: '2017-01-01 10:10:00'
-    #     token: '1234567890'
-    #   }
     # @raise [Aeternitas::Guard::GuardIsLocked] if the lock can not be acquired
     def acquire_lock!
-      payload = {
-        "id" => @id,
-        "state" => "processing",
-        "timeout" => @timeout,
-        "cooldown" => @cooldown,
-        "locked_until" => @timeout.from_now,
-        "token" => @token
-      }
+      retries = 0
+      begin
+        Aeternitas::GuardLock.transaction do
+          lock = Aeternitas::GuardLock.where(lock_key: @id).lock.first
 
-      has_lock = Aeternitas.redis.set(@id, JSON.unparse(payload), ex: @timeout.to_i, nx: true)
-
-      raise(GuardIsLocked.new(@id, get_timeout)) unless has_lock
+          if lock
+            if lock.locked_until > Time.current
+              # Lock is still active
+              raise GuardIsLocked.new(@id, lock.locked_until, lock.reason)
+            else
+              # Lock has expired
+              lock.update!(
+                token: @token,
+                state: :processing,
+                locked_until: @timeout.from_now,
+                reason: nil
+              )
+            end
+          else
+            # Create new lock
+            Aeternitas::GuardLock.create!(
+              lock_key: @id,
+              token: @token,
+              state: :processing,
+              locked_until: @timeout.from_now
+            )
+          end
+        end
+      rescue ActiveRecord::RecordNotUnique
+        # prevent infinite loops in unexpected scenarios
+        retries += 1
+        raise if retries > 4
+        retry
+      end
     end
 
-    # Tries to unlock the guard. This starts the cooldown phase.
-    #
-    # @example The Redis value looks like this
-    #   {
-    #     id: 'MyId'
-    #     state: 'cooldown'
-    #     timeout: '3600'
-    #     cooldown: '5'
-    #     locked_until: '2017-01-01 10:00:05'
-    #     token: '1234567890'
-    #   }
-    def unlock
-      return false unless holds_lock?
-
-      payload = {
-        "id" => @id,
-        "state" => "cooldown",
-        "timeout" => @timeout,
-        "cooldown" => @cooldown,
-        "locked_until" => @cooldown.from_now,
-        "token" => @token
-      }
-
-      Aeternitas.redis.set(@id, JSON.unparse(payload), ex: @cooldown.to_i)
-    end
-
-    # Lets the guard sleep until the given date.
-    # This means that non can acquire the guards lock
-    #
-    # @example The Redis value looks like this
-    #   {
-    #     id: 'MyId'
-    #     state: 'sleeping'
-    #     timeout: '3600'
-    #     cooldown: '5'
-    #     locked_until: '2017-01-01 13:00'
-    #     message: "API Quota Reached"
-    #   }
+    # Lets the guard sleep until the given time.
+    # This will create a new sleeping lock or update an existing one.
     # @todo Should this raise an error if the lock is not owned by this instance?
     # @param [Time] sleep_timeout for how long will the guard sleep
     # @param [String] msg hint why the guard sleeps
     def sleep(sleep_timeout, msg = nil)
-      payload = {
-        "id" => @id,
-        "state" => "sleeping",
-        "timeout" => @timeout,
-        "cooldown" => @cooldown,
-        "locked_until" => sleep_timeout
-      }
-      payload.merge(message: msg) if msg
+      Aeternitas::GuardLock.transaction do
+        lock = Aeternitas::GuardLock.where(lock_key: @id).lock.first_or_initialize
 
-      Aeternitas.redis.set(@id, JSON.unparse(payload), ex: (sleep_timeout - Time.now).seconds.to_i)
-    end
+        lock.assign_attributes(
+          token: @token,
+          state: :sleeping,
+          locked_until: sleep_timeout,
+          reason: msg
+        )
 
-    # Checks if this instance holds the lock. This is done by retrieving the value from redis and
-    # comparing the token value. If they match, than the lock is held by this instance.
-    #
-    # @todo Make the check atomic
-    # @return [Boolean] if the lock is held by this instance
-    def holds_lock?
-      payload = get_payload
-      payload["token"] == @token && payload["state"] == "processing"
-    end
-
-    # Returns the guards current timeout.
-    #
-    # @return [Time] the guards current timeout
-    def get_timeout
-      payload = get_payload
-      (payload["state"] == "processing") ? payload["cooldown"].to_i.seconds.from_now : Time.parse(payload["locked_until"])
-    end
-
-    # Retrieves the locks payload from redis.
-    #
-    # @return [Hash] the locks payload
-    def get_payload
-      value = Aeternitas.redis.get(@id)
-      return {} unless value
-      JSON.parse(value)
+        lock.save!
+      end
     end
 
     # Custom error class thrown when the lock can not be acquired

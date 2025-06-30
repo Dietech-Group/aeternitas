@@ -7,3 +7,5 @@
 /pkg/
 /spec/reports/
 /tmp/
+/db/test.sqlite3*
+*.gem
