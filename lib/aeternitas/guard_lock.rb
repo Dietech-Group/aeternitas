@@ -5,7 +5,7 @@ module Aeternitas
   class GuardLock < ActiveRecord::Base
     self.table_name = "aeternitas_guard_locks"
 
-    enum state: {
+    enum :state, {
       processing: "processing",
       cooldown: "cooldown",
       sleeping: "sleeping"
