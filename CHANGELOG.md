@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.0.rc1] - 2025-06-30
+## [2.0.0] - Unreleased
 
 This is a major rewrite of Æternitas with the primary goals of removing the Redis and Sidekiq dependencies and simplifying the core functionality.
 
