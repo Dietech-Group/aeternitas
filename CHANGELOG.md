@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.0] - Unreleased
+## [2.0.0] - 2025-08-11
 
 This is a major rewrite of Æternitas with the primary goals of removing the Redis and Sidekiq dependencies and simplifying the core functionality.
 
@@ -24,6 +24,7 @@ This is a major rewrite of Æternitas with the primary goals of removing the Red
 - Thundering Herd Prevention: The `PollJob` now intelligently staggers retries when a `GuardIsLocked` error occurs, preventing many jobs from retrying simultaneously and overwhelming a resource.
 - Configurable Metrics: Added `Aeternitas.config.metrics_enabled` and `Aeternitas.config.metric_retention_period` to give users control over metrics collection and data retention.
 - Built-in Maintenance Jobs: Added `Aeternitas::CleanupStaleLocksJob` and `Aeternitas::CleanupOldMetricsJob` to provide a clear, easy way to schedule necessary database cleanup.
+- Test Mode: Added `Aeternitas::Test.test_mode`, which sets all cooldowns, retry delays, and sleep durations to zero to simplify writing tests.
 
 ### Removed
 - Removed direct gem dependencies on `sidekiq`, `sidekiq-unique-jobs`, `redis`, `connection_pool`, and `tabstabs`.
