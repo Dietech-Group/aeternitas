@@ -35,7 +35,7 @@ module Aeternitas
     # @return [Aeternitas::Guard] Creates a new Instance
     def initialize(id, cooldown, timeout = 10.minutes)
       @id = id
-      @cooldown = cooldown
+      @cooldown = Aeternitas.test_mode? ? 0.seconds : cooldown
       @timeout = timeout
       @token = SecureRandom.hex(10)
     end
@@ -134,6 +134,7 @@ module Aeternitas
     # @param [Time] sleep_timeout for how long will the guard sleep
     # @param [String] msg hint why the guard sleeps
     def sleep(sleep_timeout, msg = nil)
+      sleep_timeout = Time.now if Aeternitas.test_mode?
       Aeternitas::GuardLock.transaction do
         lock = Aeternitas::GuardLock.where(lock_key: @id).lock.first_or_initialize
 

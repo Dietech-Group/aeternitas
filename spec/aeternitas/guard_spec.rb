@@ -173,4 +173,22 @@ describe Aeternitas::Guard do
       end
     end
   end
+
+  describe "in test mode" do
+    around do |example|
+      Aeternitas::Test.test_mode do
+        example.run
+      end
+    end
+
+    it "initializes with a cooldown of 0" do
+      expect(guard.cooldown).to eq(0.seconds)
+    end
+
+    it "sleeps until now" do
+      guard.sleep_until(1.hour.from_now)
+      lock_record = Aeternitas::GuardLock.find_by(lock_key: lock_key)
+      expect(lock_record.locked_until).to be_within(1.second).of(Time.now)
+    end
+  end
 end

@@ -17,6 +17,7 @@ require "aeternitas/aeternitas_job"
 require "aeternitas/poll_job"
 require "aeternitas/cleanup_stale_locks_job"
 require "aeternitas/cleanup_old_metrics_job"
+require "aeternitas/test"
 
 # Aeternitas
 module Aeternitas
@@ -31,6 +32,18 @@ module Aeternitas
   # @yieldparam [Aeternitas::Configuration] config the aeternitas configuration
   def self.configure
     yield(config)
+  end
+
+  # Returns true if aeternitas is in test mode.
+  # @return [Boolean]
+  def self.test_mode?
+    @test_mode == true
+  end
+
+  # Sets the test mode.
+  # @param [Boolean] value
+  def self.test_mode=(value)
+    @test_mode = value
   end
 
   # Enqueues all active pollables for which next polling is lower than the current time
