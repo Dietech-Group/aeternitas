@@ -175,4 +175,34 @@ RSpec.describe Aeternitas::PollJob do
       end
     end
   end
+
+  describe "in test mode" do
+    around do |example|
+      Aeternitas::Test.test_mode do
+        example.run
+      end
+    end
+
+    let(:guard_locked_error) { Aeternitas::Guard::GuardIsLocked.new("guard-key", 30.minutes.from_now) }
+
+    it "uses a wait time of 0 for standard retries" do
+      expect(described_class.execution_wait_time(1)).to eq(0.seconds)
+    end
+
+    context "when a guard is locked" do
+      before do
+        allow_any_instance_of(Aeternitas::Guard).to receive(:with_lock).and_raise(guard_locked_error)
+      end
+
+      it "retries the job with a wait time of 0" do
+          travel_to Time.current do
+            described_class.perform_later(meta_data.id)
+            perform_enqueued_jobs
+            expect(enqueued_jobs.size).to eq(1)
+            enqueued_job = enqueued_jobs.last
+            expect(Time.at(enqueued_job[:at])).to be_within(1.second).of(Time.current)
+          end
+      end
+    end
+  end
 end

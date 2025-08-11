@@ -56,9 +56,10 @@ module Aeternitas
       meta_data.enqueue!
 
       if pollable_config.sleep_on_guard_locked
-        if base_delay > 0
+        delay = Aeternitas.test_mode? ? 0 : base_delay
+        if delay > 0
           ActiveJob::Base.logger.warn "[Aeternitas::PollJob] Guard locked for #{arguments.first}. Sleep for #{base_delay.round(2)}s."
-          sleep(base_delay)
+          sleep(delay)
         end
         retry_job
       else
@@ -78,17 +79,20 @@ module Aeternitas
         jitter = rand(0.0..2.0)
         total_wait = base_delay + stagger_delay + jitter
 
-        if total_wait > 0
-          retry_job(wait: total_wait.seconds)
+        if total_wait > 0 || Aeternitas.test_mode?
+          wait_time = Aeternitas.test_mode? ? 0.seconds : total_wait.seconds
+          retry_job(wait: wait_time)
           ActiveJob::Base.logger.info "[Aeternitas::PollJob] Guard locked for #{arguments.first}. Retry in #{total_wait.round(2)}s."
         else
           # GuardLock expired, retry with minimal delay
-          retry_job(wait: jitter.seconds)
+          wait_time = Aeternitas.test_mode? ? 0.seconds : jitter.seconds
+          retry_job(wait: wait_time)
         end
       end
     end
 
     def self.execution_wait_time(executions)
+      return 0.seconds if Aeternitas.test_mode?
       wait_index = executions - 1
       RETRY_DELAYS[wait_index] || RETRY_DELAYS.last
     end
