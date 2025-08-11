@@ -195,13 +195,13 @@ RSpec.describe Aeternitas::PollJob do
       end
 
       it "retries the job with a wait time of 0" do
-          travel_to Time.current do
-            described_class.perform_later(meta_data.id)
-            perform_enqueued_jobs
-            expect(enqueued_jobs.size).to eq(1)
-            enqueued_job = enqueued_jobs.last
-            expect(Time.at(enqueued_job[:at])).to be_within(1.second).of(Time.current)
-          end
+        travel_to Time.current do
+          described_class.perform_later(meta_data.id)
+          perform_enqueued_jobs
+          expect(enqueued_jobs.size).to eq(1)
+          enqueued_job = enqueued_jobs.last
+          expect(Time.at(enqueued_job[:at])).to be_within(1.second).of(Time.current)
+        end
       end
     end
   end
